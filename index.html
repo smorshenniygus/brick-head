@@ -1,0 +1,1217 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Собери себя сам</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --scene: #efe8dc;
+  --ground: #8f6a4a;
+  --paper: #fffdf7;
+  --paper-edge: #e3dccf;
+  --ink: #1f1b18;
+  --ink-soft: #6f655c;
+  --callout: #d5e7f5;
+  --callout-edge: #b3cfe6;
+  --stud-off: #ded7cb;
+  --red: #d8261c;
+  --red-dk: #9e1610;
+  --yellow: #f6c514;
+  --yellow-dk: #c08f00;
+  --blue: #1d6cc4;
+  --blue-dk: #12498a;
+  --green: #2e9446;
+  --drop: 0 8px 18px rgba(40, 20, 5, 0.28);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --scene: #1d2129;
+    --ground: #5b4636;
+    --paper: #262a32;
+    --paper-edge: #171a1f;
+    --ink: #f4eee6;
+    --ink-soft: #a89e94;
+    --callout: #2a3b4f;
+    --callout-edge: #1d2a39;
+    --stud-off: #3c414b;
+    --drop: 0 8px 18px rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] {
+  --scene: #1d2129;
+  --ground: #5b4636;
+  --paper: #262a32;
+  --paper-edge: #171a1f;
+  --ink: #f4eee6;
+  --ink-soft: #a89e94;
+  --callout: #2a3b4f;
+  --callout-edge: #1d2a39;
+  --stud-off: #3c414b;
+  --drop: 0 8px 18px rgba(0, 0, 0, 0.5);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  background: var(--scene);
+  color: var(--ink);
+  font-family: 'Nunito', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+#scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
+.display { font-family: 'Unbounded', 'Nunito', sans-serif; }
+
+/* ---------- bricks: every button is a brick with studs on top */
+.brick {
+  --c: var(--red); --cd: var(--red-dk);
+  position: relative;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 46px; padding: 0 16px 4px;
+  background: var(--c); color: #fff;
+  border-radius: 6px;
+  box-shadow: inset 0 -5px 0 var(--cd), inset 0 2px 0 rgba(255, 255, 255, 0.28), var(--drop);
+  font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 14px;
+  transition: transform .08s ease, box-shadow .08s ease;
+  margin-top: 7px;
+}
+.brick:active { transform: translateY(3px); box-shadow: inset 0 -2px 0 var(--cd), inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 3px 8px rgba(40, 20, 5, 0.25); }
+.brick.yellow { --c: var(--yellow); --cd: var(--yellow-dk); color: #2a2000; }
+.brick.blue { --c: var(--blue); --cd: var(--blue-dk); }
+.brick.paper { --c: var(--paper); --cd: var(--paper-edge); color: var(--ink); }
+.brick svg { width: 22px; height: 22px; flex: none; }
+.studs {
+  position: absolute; left: 5px; right: 5px; top: -6px; height: 7px;
+  display: flex; justify-content: space-around; pointer-events: none;
+}
+.studs b {
+  width: 15px; height: 7px; border-radius: 4px 4px 1px 1px;
+  background: var(--c);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35), inset -2px 0 0 rgba(0, 0, 0, 0.12);
+}
+
+/* ---------- top bar */
+.top {
+  position: fixed; top: 12px; left: 16px; right: 16px;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+  pointer-events: none; z-index: 5;
+}
+.top > * { pointer-events: auto; }
+.set-badge { flex-direction: column; align-items: flex-start; gap: 0; padding: 7px 16px 10px; cursor: default; }
+.set-badge:active { transform: none; box-shadow: inset 0 -5px 0 var(--cd), inset 0 2px 0 rgba(255, 255, 255, 0.28), var(--drop); }
+.set-badge small { font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; color: var(--yellow); }
+.set-badge span { font-size: 15px; font-weight: 900; line-height: 1.2; }
+.actions { display: flex; gap: 10px; }
+.actions .brick { width: 54px; padding: 0 0 4px; }
+
+.menu {
+  position: absolute; top: 62px; right: 0; min-width: 250px; padding: 8px;
+  display: none; flex-direction: column; gap: 4px;
+  background: var(--paper); border-radius: 10px;
+  box-shadow: inset 0 -5px 0 var(--paper-edge), var(--drop);
+}
+.menu.open { display: flex; }
+.menu button { text-align: left; padding: 11px 12px 12px; border-radius: 6px; font-weight: 800; font-size: 15px; display: flex; align-items: center; gap: 10px; }
+.menu button:hover { background: var(--callout); }
+.menu button i { width: 14px; height: 10px; border-radius: 2px; flex: none; box-shadow: inset 0 -2px 0 rgba(0,0,0,.2); }
+.menu .danger { color: var(--red); }
+
+/* ---------- instruction page */
+.manual {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  width: min(600px, calc(100% - 24px));
+  padding: 14px 16px 16px; z-index: 5;
+  background: var(--paper); border-radius: 10px;
+  box-shadow: inset 0 -6px 0 var(--paper-edge), var(--drop);
+  transition: opacity .3s, transform .3s;
+}
+.manual.gone { opacity: 0; transform: translate(-50%, 20px); pointer-events: none; }
+.progress {
+  position: absolute; left: 10px; right: 10px; top: -8px; height: 9px;
+  display: flex; gap: 3px; justify-content: space-between;
+}
+.progress b {
+  flex: 1; max-width: 18px; border-radius: 4px 4px 1px 1px;
+  background: var(--stud-off);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.35);
+  transition: background .3s;
+}
+.progress b.done { background: var(--red); }
+.progress b.now { background: var(--yellow); animation: now 1.2s ease-in-out infinite; }
+@keyframes now { 50% { transform: translateY(-3px); } }
+.manual-body { display: flex; gap: 14px; align-items: stretch; }
+.step-no { flex: none; min-width: 64px; display: flex; flex-direction: column; justify-content: center; }
+.step-no b { font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 52px; line-height: .95; letter-spacing: -.03em; }
+.step-no span { font-size: 13px; font-weight: 800; color: var(--ink-soft); margin-top: 4px; }
+.callout {
+  flex: 1; min-width: 0;
+  background: var(--callout); border-radius: 8px;
+  box-shadow: inset 0 0 0 2px var(--callout-edge);
+  padding: 8px 10px 6px;
+  display: flex; flex-wrap: wrap; align-content: center; gap: 2px 6px;
+}
+.part {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 2px 4px; border-radius: 6px; cursor: pointer; transition: transform .12s, opacity .2s;
+}
+.part:hover { transform: translateY(-2px); }
+.part svg { height: 42px; width: auto; display: block; }
+.part em { font-style: normal; font-family: 'Unbounded', sans-serif; font-weight: 700; font-size: 12px; }
+.part.done { opacity: .3; cursor: default; }
+.part.done:hover { transform: none; }
+.manual-foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 10px; font-size: 13px; font-weight: 700; color: var(--ink-soft); }
+.manual-foot b { color: var(--ink); white-space: nowrap; }
+
+/* ---------- toast */
+.toast {
+  position: fixed; left: 50%; top: 82px; transform: translate(-50%, -10px);
+  padding: 10px 16px 13px; border-radius: 6px;
+  background: var(--yellow); color: #2a2000;
+  box-shadow: inset 0 -4px 0 var(--yellow-dk), var(--drop);
+  font-weight: 900; font-size: 15px; opacity: 0;
+  transition: opacity .2s, transform .2s; pointer-events: none; z-index: 6; white-space: nowrap;
+  max-width: calc(100% - 32px); overflow: hidden; text-overflow: ellipsis;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- the set box */
+.overlay {
+  position: fixed; inset: 0; z-index: 10;
+  display: none; align-items: center; justify-content: center; padding: 16px;
+  background: color-mix(in srgb, var(--scene) 45%, transparent);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.overlay.open { display: flex; }
+.box {
+  width: min(450px, 100%); position: relative;
+  background: var(--red); color: #fff; border-radius: 12px; overflow: hidden;
+  box-shadow: inset 0 -8px 0 var(--red-dk), 0 30px 80px rgba(60, 10, 5, .45);
+}
+.box-top { display: flex; align-items: stretch; gap: 8px; padding: 14px 14px 0; }
+.box-set {
+  background: var(--yellow); color: #2a2000; border-radius: 4px;
+  padding: 6px 10px 7px; box-shadow: inset 0 -3px 0 var(--yellow-dk);
+  font-weight: 900; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; line-height: 1.15;
+}
+.box-set b { display: block; font-family: 'Unbounded', sans-serif; font-size: 16px; letter-spacing: 0; }
+.box-spacer { flex: 1; }
+.box-fact {
+  background: #fff; color: var(--ink); border-radius: 4px; padding: 5px 10px 6px; text-align: center;
+  display: flex; flex-direction: column; justify-content: center;
+  font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; color: #555;
+}
+.box-fact b { font-family: 'Unbounded', sans-serif; font-size: 17px; letter-spacing: 0; color: #1f1b18; line-height: 1.1; }
+.box-art {
+  position: relative; height: min(40vh, 320px); margin: 12px 14px 0; border-radius: 8px; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 35%, #ff6b4f 0%, #e23a25 45%, #b81e14 100%);
+}
+.box-art canvas { width: 100%; height: 100%; display: block; }
+.box-art::before {   /* a studded baseplate peeking in at the bottom */
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 16px;
+  background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.35) 0 4px, transparent 5px) 0 0 / 18px 16px, #2e9446;
+  box-shadow: inset 0 3px 0 rgba(0,0,0,.15);
+}
+.sticker {
+  position: absolute; top: 14px; left: 12px; width: 92px; height: 92px;
+  display: grid; place-items: center; text-align: center;
+  background: var(--yellow); color: #2a2000;
+  clip-path: polygon(50% 0%, 61% 15%, 79% 9%, 81% 27%, 98% 33%, 89% 50%, 98% 67%, 81% 73%, 79% 91%, 61% 85%, 50% 100%, 39% 85%, 21% 91%, 19% 73%, 2% 67%, 11% 50%, 2% 33%, 19% 27%, 21% 9%, 39% 15%);
+  transform: rotate(-12deg);
+  font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: 13px; line-height: 1.1;
+}
+.box-body { padding: 16px 18px 22px; }
+.box h1 { margin: 0; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(24px, 6.4vw, 31px); line-height: 1.08; letter-spacing: -.01em; text-shadow: 0 3px 0 var(--red-dk); }
+.box p { margin: 10px 0 18px; font-size: 16px; font-weight: 800; line-height: 1.4; opacity: .95; }
+.box .go { width: 100%; min-height: 56px; font-size: 17px; font-weight: 900; }
+.box .meta { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin-top: 14px; font-size: 13px; font-weight: 800; opacity: .85; }
+.box .meta span { white-space: nowrap; }
+
+/* ---------- finale */
+.finale {
+  position: fixed; left: 50%; bottom: 14px; transform: translate(-50%, 20px) scale(.96);
+  z-index: 8; text-align: center; padding: 20px 22px 22px; opacity: 0; pointer-events: none;
+  width: min(470px, calc(100% - 24px));
+  background: var(--paper); border-radius: 10px;
+  box-shadow: inset 0 -6px 0 var(--paper-edge), var(--drop);
+  transition: opacity .5s, transform .5s cubic-bezier(.2, 1.4, .4, 1);
+}
+.finale .studs { --c: var(--paper); left: 14px; right: 14px; top: -6px; }
+.finale.show { opacity: 1; transform: translate(-50%, 0) scale(1); pointer-events: auto; }
+.finale .kicker { display: inline-block; padding: 4px 10px 6px; border-radius: 4px; background: var(--green); color: #fff; box-shadow: inset 0 -3px 0 rgba(0,0,0,.2); font-size: 12px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.finale h2 { margin: 10px 0 6px; font-family: 'Unbounded', sans-serif; font-weight: 900; font-size: clamp(24px, 6.5vw, 32px); line-height: 1.08; }
+.finale p { margin: 0 0 12px; font-weight: 800; color: var(--ink-soft); }
+.finale .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 7; }
+
+@media (max-width: 560px) {
+  .set-badge { display: none; }
+  .top { justify-content: flex-end; }
+  .manual { padding: 12px 12px 14px; }
+  .step-no { min-width: 46px; }
+  .step-no b { font-size: 40px; }
+  .part svg { height: 32px; }
+  .manual-foot .tip { display: none; }
+  .sticker { width: 76px; height: 76px; font-size: 11px; }
+}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<canvas id="confetti"></canvas>
+
+<div class="top">
+  <div class="brick set-badge">
+    <i class="studs"><b></b><b></b><b></b><b></b><b></b></i>
+    <small>Набор № 0001</small>
+    <span id="brandName">Собери себя сам</span>
+  </div>
+  <div class="actions">
+    <button class="brick yellow" id="hintBtn" title="Подсказка" aria-label="Подсказка">
+      <i class="studs"><b></b><b></b></i>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>
+    </button>
+    <div style="position:relative">
+      <button class="brick blue" id="menuBtn" title="Меню" aria-label="Меню">
+        <i class="studs"><b></b><b></b></i>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <div class="menu" id="menu">
+        <button id="soundBtn"><i style="background:var(--blue)"></i><span>Звук: вкл</span></button>
+        <button id="autoStepBtn"><i style="background:var(--yellow)"></i><span>Собрать этот шаг за меня</span></button>
+        <button id="resetBtn" class="danger"><i style="background:var(--red)"></i><span>Разобрать и начать заново</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="manual" id="stepPanel">
+  <div class="progress" id="progress"></div>
+  <div class="manual-body">
+    <div class="step-no"><b id="stepNo">1</b><span id="stepOf">из 26</span></div>
+    <div class="callout" id="parts"></div>
+  </div>
+  <div class="manual-foot">
+    <span class="tip">Тащи подпрыгивающие детали на полупрозрачные места. Не найти — нажми на деталь в рамке.</span>
+    <b id="stepLeft"></b>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="overlay open" id="intro">
+  <div class="box">
+    <div class="box-top">
+      <div class="box-set">Набор<b>№ 0001</b></div>
+      <div class="box-spacer"></div>
+      <div class="box-fact"><b>0+</b>лет</div>
+      <div class="box-fact"><b id="boxCount">0</b>деталей</div>
+    </div>
+    <div class="box-art">
+      <canvas id="boxCanvas"></canvas>
+      <div class="sticker">Это<br>ты!</div>
+    </div>
+    <div class="box-body">
+      <h1 id="introTitle">С днём рождения!</h1>
+      <p>Ты любишь собирать конструктор — так что вот тебе набор, где главная деталь это ты. Детали на столе, инструкция — по шагам.</p>
+      <button class="brick yellow go" id="startBtn"><i class="studs"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></i>Высыпать детали</button>
+      <div class="meta"><span id="boxSteps">26 шагов</span><span>·</span><span>Сборка своими руками</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="finale" id="finale">
+  <i class="studs"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></i>
+  <div class="kicker">Набор собран</div>
+  <h2 id="finaleTitle">С днём рождения!</h2>
+  <p id="finaleText"></p>
+  <div class="row">
+    <button class="brick" id="spinBtn"><i class="studs"><b></b><b></b><b></b></i>Покрутить</button>
+    <button class="brick paper" id="againBtn"><i class="studs"><b></b><b></b><b></b><b></b></i>Собрать ещё раз</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { buildBricks, PALETTE, LAYER_H } from './model.js';
+
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const NAME = (params.get('name') || '').trim();
+const SAVE_KEY = 'brick-head-v1';
+const GROUND = -0.32;
+
+const plural = (n, one, few, many) => {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return one;
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return few;
+  return many;
+};
+
+// ---------------------------------------------------------------- data
+const SLOTS = buildBricks().map((b, id) => ({
+  id, layer: b.layer, w: b.w, d: b.d, color: b.color,
+  pos: new THREE.Vector3(b.x, b.y, b.z),
+  type: `${Math.min(b.w, b.d)}x${Math.max(b.w, b.d)}|${b.color}`,
+  filledBy: null, ghost: null,
+}));
+const STEPS = Math.max(...SLOTS.map(s => s.layer)) + 1;
+const slotsOfStep = (s) => SLOTS.filter(x => x.layer === s);
+
+// ---------------------------------------------------------------- renderer + scene
+const canvas = $('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, preserveDrawingBuffer: params.has('shot') });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 0.85;
+
+const scene = new THREE.Scene();
+const pmrem = new THREE.PMREMGenerator(renderer);
+const envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environment = envTex;
+
+const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 600);
+
+function addLights(sc, shadows) {
+  sc.add(new THREE.HemisphereLight(0xfff6ea, 0x6a5a4a, 0.55));
+  const key = new THREE.DirectionalLight(0xfff1e0, 1.9);
+  key.position.set(18, 40, 26);
+  if (shadows) {
+    key.castShadow = true;
+    key.shadow.mapSize.set(2048, 2048);
+    const c = key.shadow.camera;
+    c.left = -40; c.right = 40; c.top = 40; c.bottom = -40; c.near = 1; c.far = 120;
+    key.shadow.bias = -0.0004;
+    key.shadow.normalBias = 0.03;
+  }
+  sc.add(key);
+  const rim = new THREE.DirectionalLight(0xdfe8ff, 0.7);
+  rim.position.set(-24, 18, -30);
+  sc.add(rim);
+}
+addLights(scene, true);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(300, 64), new THREE.MeshStandardMaterial({ roughness: 0.8, envMapIntensity: 0.25 }));
+
+// a wooden table: planks + grain painted into a canvas
+function woodTexture(base) {
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1024;
+  const c = cv.getContext('2d');
+  const col = new THREE.Color(base);
+  const css = (k, a = 1) => `rgba(${Math.round(Math.min(1, col.r * k) * 255)},${Math.round(Math.min(1, col.g * k) * 255)},${Math.round(Math.min(1, col.b * k) * 255)},${a})`;
+  const plank = 128;
+  for (let p = 0; p < 1024 / plank; p++) {
+    const y0 = p * plank;
+    c.fillStyle = css(0.9 + ((p * 37) % 7) / 30);
+    c.fillRect(0, y0, 1024, plank);
+    for (let l = 0; l < 26; l++) {
+      const yy = y0 + 6 + Math.random() * (plank - 12), amp = 1 + Math.random() * 3, ph = Math.random() * 6;
+      c.strokeStyle = Math.random() < 0.5 ? css(0.78, 0.35) : css(1.08, 0.3);
+      c.lineWidth = 0.6 + Math.random() * 1.6;
+      c.beginPath();
+      for (let x = 0; x <= 1024; x += 16) c.lineTo(x, yy + Math.sin(x / 140 + ph) * amp);
+      c.stroke();
+    }
+    c.fillStyle = css(0.6, 0.55);
+    c.fillRect(0, y0, 1024, 2);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(9, 9);
+  tex.anisotropy = 8;
+  return tex;
+}
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = GROUND;
+ground.receiveShadow = true;
+scene.add(ground);
+
+function applyTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  const bg = new THREE.Color(cs.getPropertyValue('--scene').trim());
+  const gr = new THREE.Color(cs.getPropertyValue('--ground').trim());
+  scene.background = bg;
+  scene.fog = new THREE.Fog(bg, 90, 220);
+  if (ground.material.map) ground.material.map.dispose();
+  ground.material.map = woodTexture(gr);
+  ground.material.needsUpdate = true;
+}
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+
+// ---------------------------------------------------------------- geometry
+const STUD = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 18);
+const geoCache = new Map();
+function brickGeo(w, d) {
+  const k = `${w}x${d}`;
+  if (geoCache.has(k)) return geoCache.get(k);
+  const parts = [];
+  const body = new RoundedBoxGeometry(w - 0.04, LAYER_H - 0.02, d - 0.04, 2, 0.06);
+  body.translate(0, LAYER_H / 2 - 0.01, 0);
+  parts.push(body.index ? body.toNonIndexed() : body);
+  for (let u = 0; u < w; u++) for (let v = 0; v < d; v++) {
+    const s = STUD.clone();
+    s.translate(u - w / 2 + 0.5, LAYER_H + 0.09, v - d / 2 + 0.5);
+    parts.push(s.toNonIndexed());
+  }
+  const g = mergeGeometries(parts);
+  g.computeBoundingSphere();
+  geoCache.set(k, g);
+  return g;
+}
+const baseMats = {};
+for (const [name, hex] of Object.entries(PALETTE)) {
+  baseMats[name] = new THREE.MeshStandardMaterial({ color: hex, roughness: 0.3, metalness: 0, envMapIntensity: 0.35 });
+}
+
+// baseplate
+{
+  const N = 22, parts = [];
+  const plate = new RoundedBoxGeometry(N - 0.04, 0.32, N - 0.04, 2, 0.05);
+  plate.translate(0, -0.16, 0);
+  parts.push(plate.index ? plate.toNonIndexed() : plate);
+  const st = new THREE.CylinderGeometry(0.3, 0.3, 0.18, 12);
+  for (let u = 0; u < N; u++) for (let v = 0; v < N; v++) {
+    const s = st.clone(); s.translate(u - N / 2 + 0.5, 0.09, v - N / 2 + 0.5); parts.push(s.toNonIndexed());
+  }
+  const m = new THREE.Mesh(mergeGeometries(parts), new THREE.MeshStandardMaterial({ color: '#4f9a52', roughness: 0.45, envMapIntensity: 0.5 }));
+  m.receiveShadow = true; m.castShadow = true;
+  scene.add(m);
+}
+
+// ---------------------------------------------------------------- bricks (the pile)
+let seed = 20261019;
+const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
+
+const BRICKS = SLOTS.map((s) => {
+  const mat = baseMats[s.color].clone();
+  mat.emissive = new THREE.Color(PALETTE[s.color]);
+  mat.emissiveIntensity = 0;
+  const mesh = new THREE.Mesh(brickGeo(s.w, s.d), mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  const b = { id: s.id, w: s.w, d: s.d, color: s.color, type: s.type, step: s.layer, mesh, slot: null,
+              pilePos: new THREE.Vector3(), pileRot: 0, busy: false };
+  mesh.userData.brick = b;
+  scene.add(mesh);
+  return b;
+});
+
+// scatter: rejection sampling of oriented footprints around the baseplate
+{
+  const obb = (x, z, w, d, a) => ({ x, z, hw: w / 2 + 0.12, hd: d / 2 + 0.12,
+    u: [Math.cos(a), -Math.sin(a)], v: [Math.sin(a), Math.cos(a)] });
+  const sep = (A, B, ax) => {
+    const pr = (O) => O.hw * Math.abs(O.u[0] * ax[0] + O.u[1] * ax[1]) + O.hd * Math.abs(O.v[0] * ax[0] + O.v[1] * ax[1]);
+    return Math.abs((B.x - A.x) * ax[0] + (B.z - A.z) * ax[1]) > pr(A) + pr(B);
+  };
+  const overlap = (A, B) => !(sep(A, B, A.u) || sep(A, B, A.v) || sep(A, B, B.u) || sep(A, B, B.v));
+  const placed = [];
+  const order = [...BRICKS].sort(() => rnd() - 0.5);
+  for (const b of order) {
+    const a = rnd() * Math.PI, r = 0.5 * Math.hypot(b.w, b.d);
+    let o = null;
+    for (let R = 26; !o; R += 1.5) {          // widen the spill only when it's full
+      for (let tries = 0; tries < 400 && !o; tries++) {
+        const x = (rnd() * 2 - 1) * R, z = (rnd() * 2 - 1) * R + 3;
+        if (Math.abs(x) < 11.4 + r && Math.abs(z) < 11.4 + r) continue;
+        if (Math.hypot(x, z - 3) > R) continue;
+        const c = obb(x, z, b.w, b.d, a);
+        if (placed.every(p => Math.hypot(p.x - x, p.z - z) > p.r + r + 0.3 || !overlap(p.o, c))) o = c;
+      }
+    }
+    placed.push({ x: o.x, z: o.z, r, o });
+    b.pilePos.set(o.x, GROUND, o.z);
+    b.pileRot = a;
+  }
+}
+
+function putInPile(b) {
+  b.mesh.position.copy(b.pilePos);
+  b.mesh.rotation.set(0, b.pileRot, 0);
+}
+function slotRot(b, s) { return (b.w === s.w || b.w === b.d) ? 0 : Math.PI / 2; }
+function putInSlot(b, s) {
+  b.mesh.position.copy(s.pos);
+  b.mesh.rotation.set(0, slotRot(b, s), 0);
+}
+
+// ---------------------------------------------------------------- ghosts
+const ghostGroup = new THREE.Group();
+scene.add(ghostGroup);
+for (const s of SLOTS) {
+  const mat = new THREE.MeshBasicMaterial({ color: PALETTE[s.color], transparent: true, opacity: 0.28, depthWrite: false });
+  const g = new THREE.Mesh(brickGeo(s.w, s.d), mat);
+  g.position.copy(s.pos);
+  g.scale.set(1.002, 1.002, 1.002);
+  g.userData.slot = s;
+  g.visible = false;
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(s.w - 0.04, LAYER_H - 0.02, s.d - 0.04)),
+    new THREE.LineBasicMaterial({ color: new THREE.Color(PALETTE[s.color]).multiplyScalar(0.55), transparent: true, opacity: 0.7 })
+  );
+  edges.position.y = LAYER_H / 2;
+  g.add(edges);
+  s.ghost = g;
+  ghostGroup.add(g);
+}
+
+// ---------------------------------------------------------------- state
+let step = 0;
+let started = false;
+let finished = false;
+let elapsed = 0;           // seconds of active building
+let soundOn = true;
+
+function save() {
+  try {
+    const placed = SLOTS.filter(s => s.filledBy).map(s => [s.id, s.filledBy.id]);
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ placed, elapsed: Math.round(elapsed), sound: soundOn }));
+  } catch (e) {}
+}
+function load() {
+  try { return JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); } catch (e) { return null; }
+}
+
+function currentStep() {
+  for (let s = 0; s < STEPS; s++) if (slotsOfStep(s).some(x => !x.filledBy)) return s;
+  return STEPS;
+}
+
+function refreshStep() {
+  step = currentStep();
+  for (const s of SLOTS) s.ghost.visible = started && s.layer === step && !s.filledBy;
+  for (const b of BRICKS) b.mesh.material.emissiveIntensity = 0;
+  updatePanel();
+}
+
+// isometric picture of a part, like the parts box in a paper instruction
+const shade = (hex, k) => { const c = new THREE.Color(hex).multiplyScalar(k); return `rgb(${[c.r, c.g, c.b].map(v => Math.round(Math.min(1, v) * 255)).join(',')})`; };
+const svgCache = new Map();
+function partSvg(a, b, color) {
+  const key = `${a}x${b}|${color}`;
+  if (svgCache.has(key)) return svgCache.get(key);
+  const S = 10, H = 12, cx = 0.866 * S, cy = 0.5 * S;
+  const P = (x, z, y = 0) => [(x - z) * cx, (x + z) * cy - y];
+  const hex = PALETTE[color];
+  const poly = (pts, fill) => `<polygon points="${pts.map(p => p.map(n => n.toFixed(1)).join(',')).join(' ')}" fill="${fill}" stroke="rgba(0,0,0,.35)" stroke-width=".6" stroke-linejoin="round"/>`;
+  let out = '';
+  out += poly([P(0, a, H), P(b, a, H), P(b, a, 0), P(0, a, 0)], shade(hex, 0.8));      // front-left side
+  out += poly([P(b, 0, H), P(b, a, H), P(b, a, 0), P(b, 0, 0)], shade(hex, 0.62));     // front-right side
+  out += poly([P(0, 0, H), P(b, 0, H), P(b, a, H), P(0, a, H)], shade(hex, 1.06));     // top
+  const studs = [];
+  for (let u = 0; u < b; u++) for (let v = 0; v < a; v++) studs.push([u + 0.5, v + 0.5]);
+  studs.sort((p, q) => (p[0] + p[1]) - (q[0] + q[1]));
+  const rx = 0.36 * S, ry = 0.21 * S, hs = 3;
+  for (const [x, z] of studs) {
+    const [px, py] = P(x, z, H);
+    out += `<path d="M${(px - rx).toFixed(1)},${py.toFixed(1)} v${-hs} h${(2 * rx).toFixed(1)} v${hs} a${rx},${ry} 0 0 1 ${(-2 * rx).toFixed(1)},0z" fill="${shade(hex, 0.78)}" stroke="rgba(0,0,0,.3)" stroke-width=".5"/>`;
+    out += `<ellipse cx="${px.toFixed(1)}" cy="${(py - hs).toFixed(1)}" rx="${rx}" ry="${ry}" fill="${shade(hex, 1.14)}" stroke="rgba(0,0,0,.3)" stroke-width=".5"/>`;
+  }
+  const xs = [P(0, a)[0], P(b, 0)[0]], top = P(0, 0, H + hs + ry)[1], bot = P(b, a, 0)[1];
+  const vb = `${(xs[0] - 1).toFixed(1)} ${(top - 1).toFixed(1)} ${(xs[1] - xs[0] + 2).toFixed(1)} ${(bot - top + 2).toFixed(1)}`;
+  const svg = `<svg viewBox="${vb}" aria-hidden="true">${out}</svg>`;
+  svgCache.set(key, svg);
+  return svg;
+}
+
+$('progress').innerHTML = '<b></b>'.repeat(STEPS);
+function updatePanel() {
+  const total = SLOTS.length, done = SLOTS.filter(s => s.filledBy).length;
+  [...$('progress').children].forEach((el, i) => { el.className = i < step ? 'done' : i === step ? 'now' : ''; });
+  if (step >= STEPS) {
+    $('stepNo').textContent = '✓';
+    $('stepOf').textContent = 'готово';
+    $('stepLeft').textContent = `${total} / ${total}`;
+    $('parts').innerHTML = '';
+    return;
+  }
+  $('stepNo').textContent = step + 1;
+  $('stepOf').textContent = `из ${STEPS}`;
+  const slots = slotsOfStep(step);
+  const left = slots.filter(s => !s.filledBy).length;
+  $('stepLeft').textContent = `${done} / ${total} ${plural(total, 'деталь', 'детали', 'деталей')}`;
+  const groups = new Map();
+  for (const s of slots) {
+    if (!groups.has(s.type)) groups.set(s.type, { s, left: 0 });
+    if (!s.filledBy) groups.get(s.type).left++;
+  }
+  $('parts').innerHTML = [...groups.values()]
+    .sort((p, q) => (q.left > 0) - (p.left > 0))
+    .map(({ s, left }) => {
+      const a = Math.min(s.w, s.d), b = Math.max(s.w, s.d);
+      return `<span class="part${left ? '' : ' done'}" data-type="${s.type}" title="${a}×${b}">${partSvg(a, b, s.color)}<em>${left ? left + 'x' : '✓'}</em></span>`;
+    }).join('');
+}
+
+// ---------------------------------------------------------------- tweens
+const tweens = [];
+const easeOut = t => 1 - Math.pow(1 - t, 3);
+const easeInOut = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+function fly(b, toPos, toRot, dur, arc, onDone, delay = 0) {
+  b.busy = true;
+  const fromPos = b.mesh.position.clone(), fromRot = b.mesh.rotation.y;
+  let dr = toRot - fromRot;
+  dr = ((dr % Math.PI) + Math.PI * 1.5) % Math.PI - Math.PI / 2;   // bricks are symmetric under 180°
+  tweens.push({ t: -delay, dur, step(t) {
+    const e = easeInOut(t);
+    b.mesh.position.lerpVectors(fromPos, toPos, e);
+    b.mesh.position.y += Math.sin(Math.PI * e) * arc;
+    b.mesh.rotation.y = fromRot + dr * e;
+  }, done() { b.busy = false; onDone && onDone(); } });
+}
+function drop(b, delay) {
+  // falls from the sky into its pile spot, with a small bounce
+  const to = b.pilePos.clone();
+  const from = to.clone(); from.y = 26 + rnd() * 18; from.x *= 0.35; from.z = from.z * 0.35 + 4;
+  const rx = (rnd() - 0.5) * 6, rz = (rnd() - 0.5) * 6;
+  b.mesh.position.copy(from);
+  b.mesh.visible = false;
+  b.busy = true;
+  tweens.push({ t: -delay, dur: 0.9 + rnd() * 0.3, step(t) {
+    b.mesh.visible = true;
+    const fall = Math.min(1, t / 0.78);
+    const k = fall * fall;
+    b.mesh.position.lerpVectors(from, to, Math.min(1, fall));
+    b.mesh.position.y = from.y + (to.y - from.y) * k;
+    if (t > 0.78) b.mesh.position.y = to.y + Math.sin((t - 0.78) / 0.22 * Math.PI) * 0.6;
+    b.mesh.rotation.set(rx * (1 - t), b.pileRot + (1 - t) * 3, rz * (1 - t));
+  }, done() { b.mesh.rotation.set(0, b.pileRot, 0); b.mesh.position.copy(to); b.busy = false; } });
+}
+
+// ---------------------------------------------------------------- sound
+let actx = null;
+function audio() {
+  if (!soundOn) return null;
+  try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  if (actx.state === 'suspended') actx.resume();
+  return actx;
+}
+function clickSound(pitch = 1) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime;
+  const len = 0.06, buf = a.createBuffer(1, a.sampleRate * len, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 6);
+  const n = a.createBufferSource(); n.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 2600 * pitch; f.Q.value = 1.2;
+  const g = a.createGain(); g.gain.value = 0.55;
+  n.connect(f).connect(g).connect(a.destination); n.start(t);
+  const o = a.createOscillator(), og = a.createGain();
+  o.frequency.setValueAtTime(180 * pitch, t); o.frequency.exponentialRampToValueAtTime(70, t + 0.08);
+  og.gain.setValueAtTime(0.25, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
+  o.connect(og).connect(a.destination); o.start(t); o.stop(t + 0.12);
+}
+function tick(freq = 900, vol = 0.08) {
+  const a = audio(); if (!a) return;
+  const t = a.currentTime, o = a.createOscillator(), g = a.createGain();
+  o.type = 'triangle'; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + 0.1);
+}
+function fanfare() {
+  const a = audio(); if (!a) return;
+  [523.25, 659.25, 783.99, 1046.5, 783.99, 1046.5].forEach((f, i) => {
+    const t = a.currentTime + i * 0.13 + (i > 3 ? 0.1 : 0), o = a.createOscillator(), g = a.createGain();
+    o.type = 'triangle'; o.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (i === 5 ? 0.9 : 0.3));
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + 1);
+  });
+}
+
+// ---------------------------------------------------------------- toast
+let toastTimer = 0;
+function toast(msg, ms = 1800) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+// ---------------------------------------------------------------- interaction
+const raycaster = new THREE.Raycaster();
+const ndc = new THREE.Vector2();
+const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+const hitPt = new THREE.Vector3();
+let held = null;           // brick being moved
+let dragging = false;
+let downXY = null;
+let candidate = null;      // slot the held brick would snap into
+
+function setNdc(e) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  raycaster.setFromCamera(ndc, camera);
+}
+function pickBrick() {
+  const meshes = BRICKS.filter(b => !b.slot && !b.busy).map(b => b.mesh);
+  const hit = raycaster.intersectObjects(meshes, false)[0];
+  return hit ? hit.object.userData.brick : null;
+}
+function freeMatching(b) {
+  return slotsOfStep(step).filter(s => !s.filledBy && s.type === b.type);
+}
+function findCandidate(b) {
+  const list = freeMatching(b);
+  if (!list.length) return null;
+  const gh = raycaster.intersectObjects(list.map(s => s.ghost), false)[0];
+  if (gh) return gh.object.userData.slot;
+  const y = step * LAYER_H + LAYER_H * 0.5;
+  dragPlane.constant = -y;
+  if (!raycaster.ray.intersectPlane(dragPlane, hitPt)) return null;
+  let best = null, bd = 2.6;
+  for (const s of list) {
+    const d = Math.hypot(s.pos.x - hitPt.x, s.pos.z - hitPt.z);
+    if (d < bd) { bd = d; best = s; }
+  }
+  return best;
+}
+function follow(e) {
+  setNdc(e);
+  candidate = findCandidate(held);
+  for (const s of slotsOfStep(step)) if (!s.filledBy) s.ghost.material.opacity = (s === candidate ? 0.6 : (s.type === held.type ? 0.42 : 0.12));
+  if (candidate) {
+    held.mesh.position.set(candidate.pos.x, candidate.pos.y + 0.7, candidate.pos.z);
+    held.mesh.rotation.set(0, slotRot(held, candidate), 0);
+  } else {
+    const y = step * LAYER_H + 1.8;
+    dragPlane.constant = -y;
+    if (raycaster.ray.intersectPlane(dragPlane, hitPt)) {
+      held.mesh.position.set(hitPt.x, y, hitPt.z);
+    }
+  }
+}
+function pickUp(b) {
+  held = b; candidate = null;
+  b.mesh.position.y += 1.2;
+  b.mesh.material.emissiveIntensity = 0.12;
+  canvas.style.cursor = 'grabbing';
+  tick(700, 0.06);
+  // dim slots that need something else
+  for (const s of slotsOfStep(step)) if (!s.filledBy) s.ghost.material.opacity = s.type === b.type ? 0.42 : 0.12;
+}
+function release() {
+  const b = held; held = null; dragging = false;
+  canvas.style.cursor = '';
+  controls.enabled = true;
+  for (const s of SLOTS) s.ghost.material.opacity = 0.28;
+  if (!b) return;
+  b.mesh.material.emissiveIntensity = 0;
+  if (candidate) place(b, candidate);
+  else fly(b, b.pilePos, b.pileRot, 0.45, 2, null);
+  candidate = null;
+}
+function place(b, s, quick = false) {
+  s.filledBy = b; b.slot = s;
+  s.ghost.visible = false;
+  const done = () => {
+    putInSlot(b, s);
+    clickSound(0.9 + rnd() * 0.25);
+    squash(b);
+    afterPlace();
+  };
+  if (quick) {
+    fly(b, s.pos, slotRot(b, s), 0.7, 6, done);
+  } else {
+    // short press-down
+    const from = b.mesh.position.clone();
+    tweens.push({ t: 0, dur: 0.12, step(t) { b.mesh.position.lerpVectors(from, s.pos, easeOut(t)); b.mesh.rotation.y = slotRot(b, s); }, done });
+  }
+  save();
+}
+function squash(b) {
+  tweens.push({ t: 0, dur: 0.18, step(t) { const k = 1 - Math.sin(t * Math.PI) * 0.06; b.mesh.scale.set(1 + (1 - k) * 0.5, k, 1 + (1 - k) * 0.5); }, done() { b.mesh.scale.set(1, 1, 1); } });
+}
+function afterPlace() {
+  const before = step;
+  refreshStep();
+  if (step >= STEPS && !finished) celebrate();
+  else if (step !== before) {
+    tick(1180, 0.07);
+    setTimeout(() => tick(1560, 0.07), 90);
+    toast(`Шаг ${before + 1} готов — дальше шаг ${step + 1}`);
+  }
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  if (!started || finished && !held) return;
+  setNdc(e);
+  if (held && !dragging) {          // click-to-place mode: second tap places
+    candidate = findCandidate(held);
+    release();
+    controls.enabled = false;        // swallow this tap for orbit
+    setTimeout(() => controls.enabled = true, 0);
+    return;
+  }
+  const b = pickBrick();
+  if (!b) return;
+  if (b.step !== step) {
+    const later = b.step > step;
+    toast(later ? `Эта деталь пригодится на шаге ${b.step + 1}` : 'Эта деталь уже не нужна');
+    wiggle(b);
+    controls.enabled = false; setTimeout(() => controls.enabled = true, 0);
+    return;
+  }
+  controls.enabled = false;
+  dragging = true;
+  downXY = [e.clientX, e.clientY];
+  canvas.setPointerCapture(e.pointerId);
+  pickUp(b);
+  follow(e);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (held) { follow(e); return; }
+  if (!started || e.pointerType !== 'mouse') return;
+  setNdc(e);
+  const b = pickBrick();
+  canvas.style.cursor = b && b.step === step ? 'grab' : '';
+});
+canvas.addEventListener('pointerup', (e) => {
+  if (!held || !dragging) return;
+  const moved = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]);
+  if (moved < 6 && !candidate) {    // a tap: keep the brick in hand, next tap places it
+    dragging = false;
+    toast('Теперь нажми на подсвеченное место');
+    return;
+  }
+  release();
+});
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && held) { candidate = null; release(); } });
+
+function wiggle(b) {
+  const r0 = b.mesh.rotation.y, y0 = b.mesh.position.y;
+  b.busy = true;
+  tweens.push({ t: 0, dur: 0.4, step(t) { b.mesh.rotation.y = r0 + Math.sin(t * Math.PI * 4) * 0.15 * (1 - t); b.mesh.position.y = y0 + Math.sin(t * Math.PI) * 0.4; }, done() { b.mesh.rotation.y = r0; b.mesh.position.y = y0; b.busy = false; } });
+}
+
+// ---------------------------------------------------------------- controls
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 14;
+controls.maxDistance = 110;
+controls.maxPolarAngle = Math.PI * 0.47;
+controls.target.set(0, 4, 0);
+const targetY = { v: 4 };
+
+function frame() {
+  const aspect = innerWidth / innerHeight;
+  const dist = aspect < 0.8 ? 92 : 64;
+  camera.position.set(0, dist * 0.62, dist * 0.82);
+  controls.target.set(0, 4, 0);
+}
+
+// ---------------------------------------------------------------- hint / menu
+$('hintBtn').onclick = () => {
+  if (!started || step >= STEPS) return;
+  const free = slotsOfStep(step).filter(s => !s.filledBy);
+  const s = free[Math.floor(rnd() * free.length)];
+  const b = BRICKS.find(x => !x.slot && !x.busy && x.type === s.type);
+  if (!b) return;
+  wiggle(b);
+  hintPulse = { b, s, t: 0 };
+  toast('Вот эта деталь — и её место');
+};
+let hintPulse = null;
+let hintType = null;
+$('parts').addEventListener('click', (e) => {
+  const el = e.target.closest('.part');
+  if (!el || el.classList.contains('done')) return;
+  hintType = { type: el.dataset.type, t: 0 };
+  tick(820, 0.05);
+});
+
+$('menuBtn').onclick = (e) => { e.stopPropagation(); $('menu').classList.toggle('open'); };
+addEventListener('pointerdown', (e) => { if (!$('menu').contains(e.target) && e.target !== $('menuBtn')) $('menu').classList.remove('open'); });
+$('soundBtn').onclick = () => { soundOn = !soundOn; $('soundBtn').lastChild.textContent = `Звук: ${soundOn ? 'вкл' : 'выкл'}`; save(); };
+$('autoStepBtn').onclick = () => {
+  $('menu').classList.remove('open');
+  if (!started || step >= STEPS) return;
+  const free = slotsOfStep(step).filter(s => !s.filledBy);
+  free.forEach((s, i) => {
+    const b = BRICKS.find(x => !x.slot && !x.busy && x.type === s.type);
+    if (!b) return;
+    b.busy = true;
+    setTimeout(() => { b.busy = false; if (!s.filledBy && !b.slot) place(b, s, true); }, i * 90);
+  });
+};
+$('resetBtn').onclick = () => {
+  $('menu').classList.remove('open');
+  if (!confirm('Разобрать всё и собрать заново?')) return;
+  restart();
+};
+function restart() {
+  finished = false; elapsed = 0;
+  $('finale').classList.remove('show');
+  $('stepPanel').classList.remove('gone');
+  removeTile();
+  for (const s of SLOTS) s.filledBy = null;
+  targetY.v = 4; frame();
+  BRICKS.forEach((b, i) => {
+    const wasPlaced = !!b.slot;
+    b.slot = null;
+    if (wasPlaced) fly(b, b.pilePos, b.pileRot, 0.9 + rnd() * 0.5, 8 + rnd() * 8, null, i * 0.002);
+  });
+  save();
+  refreshStep();
+}
+
+// ---------------------------------------------------------------- box art
+function buildModel() {
+  const g = new THREE.Group();
+  for (const s of SLOTS) {
+    const m = new THREE.Mesh(brickGeo(s.w, s.d), baseMats[s.color]);
+    m.position.copy(s.pos);
+    g.add(m);
+  }
+  const box = new THREE.Box3().setFromObject(g), c = box.getCenter(new THREE.Vector3());
+  for (const m of g.children) m.position.sub(c);
+  g.userData.radius = box.getSize(new THREE.Vector3()).length() / 2;
+  return g;
+}
+// the picture on the set box: the finished head turning slowly
+function makeBoxArt(cv) {
+  const r = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true, preserveDrawingBuffer: params.has('shot') });
+  r.setPixelRatio(Math.min(devicePixelRatio, 2));
+  r.toneMapping = THREE.NeutralToneMapping;
+  r.toneMappingExposure = 0.85;
+  const sc = new THREE.Scene();
+  sc.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+  addLights(sc, false);
+  const model = buildModel();
+  sc.add(model);
+  const cam = new THREE.PerspectiveCamera(30, 1, 1, 400);
+  const fit = model.userData.radius / Math.sin(THREE.MathUtils.degToRad(15)) * 0.92;
+  cam.position.set(0, fit * 0.12, fit);
+  model.rotation.y = params.has('ang') ? +params.get('ang') * Math.PI / 180 : -0.5;
+  const v = { active: true, spin: params.has('ang') ? 0 : 0.35 };
+  v.render = (dt) => {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    if (cv.width !== Math.floor(w * r.getPixelRatio()) || cv.height !== Math.floor(h * r.getPixelRatio())) {
+      r.setSize(w, h, false); cam.aspect = w / h;
+      // keep the whole head in frame on narrow viewports too
+      cam.position.setLength(fit * Math.max(1, 1 / cam.aspect));
+      cam.updateProjectionMatrix();
+    }
+    model.rotation.y += dt * v.spin;
+    cam.lookAt(0, 0, 0);
+    r.render(sc, cam);
+  };
+  return v;
+}
+const boxView = makeBoxArt($('boxCanvas'));
+
+// ---------------------------------------------------------------- start
+const total = SLOTS.length;
+$('boxCount').textContent = total;
+$('boxCount').nextSibling.textContent = plural(total, 'деталь', 'детали', 'деталей');
+$('boxSteps').textContent = `${STEPS} ${plural(STEPS, 'шаг', 'шага', 'шагов')}`;
+if (NAME) {
+  $('introTitle').textContent = `С днём рождения, ${NAME}!`;
+  $('brandName').textContent = `${NAME}: собери себя сам`;
+  $('finaleTitle').textContent = `С днём рождения, ${NAME}!`;
+}
+
+const saved = load();
+if (saved) {
+  soundOn = saved.sound !== false;
+  $('soundBtn').lastChild.textContent = `Звук: ${soundOn ? 'вкл' : 'выкл'}`;
+  elapsed = saved.elapsed || 0;
+  for (const [sid, bid] of saved.placed || []) {
+    const s = SLOTS[sid], b = BRICKS[bid];
+    if (s && b && s.type === b.type && !b.slot && !s.filledBy) { s.filledBy = b; b.slot = s; }
+  }
+  if ((saved.placed || []).length) $('startBtn').lastChild.textContent = 'Продолжить сборку';
+}
+for (const b of BRICKS) b.slot ? putInSlot(b, b.slot) : putInPile(b);
+for (const b of BRICKS) if (!saved) b.mesh.visible = false;   // still in the box
+
+function begin() {
+  $('intro').classList.remove('open');
+  boxView.active = false;
+  started = true;
+  audio();
+  if (!saved) BRICKS.forEach((b, i) => drop(b, 0.15 + i * 0.007));
+  refreshStep();
+  if (currentStep() >= STEPS) celebrate(true);
+}
+$('startBtn').onclick = begin;
+
+// debug / screenshot helpers: ?step=N fills steps below N, ?go skips the intro
+if (params.has('step')) {
+  const n = +params.get('step');
+  for (const s of SLOTS) if (s.layer < n && !s.filledBy) {
+    const b = BRICKS.find(x => !x.slot && x.type === s.type);
+    s.filledBy = b; b.slot = s; putInSlot(b, s);
+  }
+}
+if (params.has('go')) { for (const b of BRICKS) b.mesh.visible = true; $('intro').classList.remove('open'); started = true; boxView.active = false; refreshStep(); }
+if (params.has('debug')) window.__dbg = { BRICKS, SLOTS, camera, canvas, get step() { return step; } };
+
+// ---------------------------------------------------------------- finale
+let tile = null;
+function removeTile() { if (tile) { scene.remove(tile); tile = null; } }
+function makeTile() {
+  const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 128;
+  const c = cv.getContext('2d');
+  c.fillStyle = '#e9e4da'; c.fillRect(0, 0, 1024, 128);
+  c.fillStyle = '#2a2e35'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.font = '900 64px Nunito, sans-serif';
+  c.fillText((NAME ? NAME : 'С днём рождения') .toUpperCase(), 512, 68);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const g = new RoundedBoxGeometry(8, 0.8, 0.12, 2, 0.04);
+  const mats = [0, 0, 0, 0, 1, 0].map(i => i
+    ? new THREE.MeshStandardMaterial({ map: tex, roughness: 0.35 })
+    : new THREE.MeshStandardMaterial({ color: '#e9e4da', roughness: 0.35 }));
+  const m = new THREE.Mesh(g, mats);
+  m.position.set(0, 0.6, 5.07);
+  m.castShadow = true;
+  return m;
+}
+function celebrate(silent) {
+  finished = true;
+  removeTile();
+  tile = makeTile(); scene.add(tile);
+  const mins = Math.floor(elapsed / 60);
+  $('finaleText').textContent = mins >= 1
+    ? `${SLOTS.length} ${plural(SLOTS.length, 'деталь', 'детали', 'деталей')} за ${mins} ${plural(mins, 'минуту', 'минуты', 'минут')}. Вылитый ты.`
+    : `Все ${SLOTS.length} ${plural(SLOTS.length, 'деталь', 'детали', 'деталей')} на месте. Вылитый ты.`;
+  $('finale').classList.add('show');
+  $('stepPanel').classList.add('gone');
+  showOff();
+  if (!silent) { fanfare(); confetti(); spin = 4.5; }
+}
+let spin = 0;
+// glide the camera to a portrait framing of the finished head
+function showOff() {
+  const fromP = camera.position.clone(), fromT = controls.target.clone();
+  const dist = innerWidth / innerHeight < 0.8 ? 140 : 96;
+  const toT = new THREE.Vector3(0, 6, 0);   // aim low so the head sits above the finale card
+  const dir = fromP.clone().sub(fromT).setY(0).normalize();
+  const toP = toT.clone().addScaledVector(dir, dist).setY(toT.y + dist * 0.2);
+  tweens.push({ t: 0, dur: 1.6, step(t) {
+    const e = easeInOut(t);
+    controls.target.lerpVectors(fromT, toT, e);
+    camera.position.lerpVectors(fromP, toP, e);
+  } });
+}
+$('spinBtn').onclick = () => { spin = 5; confetti(); };
+$('againBtn').onclick = () => { if (confirm('Разобрать всё и собрать заново?')) restart(); };
+
+// confetti made of tiny bricks
+const cc = $('confetti'), cx = cc.getContext('2d');
+let bits = [];
+function confetti() {
+  const cols = Object.values(PALETTE).concat(['#d9483b', '#4f9a52', '#3d6fd6', '#f2c14e']);
+  for (let i = 0; i < 160; i++) bits.push({
+    x: innerWidth / 2 + (Math.random() - 0.5) * 200, y: innerHeight * 0.35,
+    vx: (Math.random() - 0.5) * 900, vy: -300 - Math.random() * 700,
+    w: 8 + Math.random() * 10, h: 6 + Math.random() * 4, r: Math.random() * 6, vr: (Math.random() - 0.5) * 12,
+    c: cols[Math.floor(Math.random() * cols.length)], life: 0,
+  });
+}
+function drawConfetti(dt) {
+  const dpr = Math.min(devicePixelRatio, 2);
+  if (cc.width !== innerWidth * dpr) { cc.width = innerWidth * dpr; cc.height = innerHeight * dpr; }
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx.clearRect(0, 0, innerWidth, innerHeight);
+  bits = bits.filter(p => p.y < innerHeight + 40 && p.life < 6);
+  for (const p of bits) {
+    p.life += dt; p.vy += 1100 * dt; p.vx *= 0.99; p.x += p.vx * dt; p.y += p.vy * dt; p.r += p.vr * dt;
+    cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r);
+    cx.fillStyle = p.c; cx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    cx.fillStyle = 'rgba(255,255,255,.35)'; cx.fillRect(-p.w / 2, -p.h / 2, p.w, 2);
+    cx.restore();
+  }
+}
+
+// ---------------------------------------------------------------- loop
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+frame();
+
+const clock = new THREE.Clock();
+let time = 0;
+function loop() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  time += dt;
+  if (started && !finished && !document.hidden) elapsed += dt;
+
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i];
+    tw.t += dt;
+    if (tw.t < 0) continue;
+    const t = Math.min(1, tw.t / tw.dur);
+    tw.step(t);
+    if (t >= 1) { tweens.splice(i, 1); tw.done && tw.done(); }
+  }
+
+  // bricks needed for this step breathe and hop now and then, so they're easier to spot in the pile
+  if (hintType && (hintType.t += dt) > 2.4) hintType = null;
+  if (started && step < STEPS) {
+    const glow = 0.07 + 0.07 * Math.sin(time * 3.2);
+    for (const b of BRICKS) {
+      if (b.slot || b === held || b.busy) continue;
+      const mine = b.step === step;
+      const named = hintType && b.type === hintType.type;
+      b.mesh.material.emissiveIntensity = named ? 0.2 + 0.25 * Math.max(0, Math.sin(hintType.t * 9)) : mine ? glow : 0;
+      b.mesh.position.y = b.pilePos.y + (mine ? Math.pow(Math.max(0, Math.sin(time * 1.6 + b.id * 0.7)), 24) * 0.7 : 0) + (named ? 0.5 : 0);
+    }
+    if (!held) for (const s of slotsOfStep(step)) if (!s.filledBy) s.ghost.material.opacity = 0.22 + 0.1 * Math.sin(time * 3.2);
+  }
+  if (hintPulse) {
+    hintPulse.t += dt;
+    const k = Math.max(0, Math.sin(hintPulse.t * 8)) * (1 - hintPulse.t / 2.4);
+    if (!hintPulse.b.slot && hintPulse.b !== held) hintPulse.b.mesh.material.emissiveIntensity = 0.15 + k * 0.5;
+    if (!hintPulse.s.filledBy) hintPulse.s.ghost.material.opacity = 0.3 + k * 0.5;
+    if (hintPulse.t > 2.4) hintPulse = null;
+  }
+
+  // camera target follows the build height
+  if (!finished) {
+    const wantY = Math.min(step, STEPS - 1) * LAYER_H * 0.5 + 3;
+    const dy = (wantY - targetY.v) * Math.min(1, dt * 1.5);
+    targetY.v += dy;
+    controls.target.y += dy;
+    camera.position.y += dy;
+  }
+
+  if (spin > 0) {
+    const a = dt * 1.4 * Math.min(1, spin);
+    spin -= dt;
+    const p = camera.position.clone().sub(controls.target).applyAxisAngle(new THREE.Vector3(0, 1, 0), a);
+    camera.position.copy(controls.target).add(p);
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+  if (boxView.active) boxView.render(dt);
+  if (bits.length) drawConfetti(dt); else if (cc.width) { cx.clearRect(0, 0, cc.width, cc.height); }
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
