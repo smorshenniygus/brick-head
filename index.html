@@ -359,6 +359,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { buildBricks, PALETTE, LAYER_H } from './model.js';
+import { makeProps, PROP_SPOTS } from './props.js';
 
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -595,6 +596,8 @@ function applyTheme() {
 applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
+const props = makeProps(scene, MAT_TOP);
+
 // ---------------------------------------------------------------- geometry
 const STUD = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 18);
 const geoCache = new Map();
@@ -661,7 +664,7 @@ const BRICKS = SLOTS.map((s) => {
     return Math.abs((B.x - A.x) * ax[0] + (B.z - A.z) * ax[1]) > pr(A) + pr(B);
   };
   const overlap = (A, B) => !(sep(A, B, A.u) || sep(A, B, A.v) || sep(A, B, B.u) || sep(A, B, B.v));
-  const placed = [];
+  const placed = PROP_SPOTS.map(p => ({ x: p.x, z: p.z, r: p.r, o: obb(p.x, p.z, p.r * 2, p.r * 2, 0) }));
   const order = [...BRICKS].sort(() => rnd() - 0.5);
   for (const b of order) {
     const a = rnd() * Math.PI, r = 0.5 * Math.hypot(b.w, b.d);
@@ -986,9 +989,22 @@ function afterPlace() {
   }
 }
 
+function pickProp() {
+  const hit = raycaster.intersectObjects(props.meshes, false)[0];
+  return hit ? props.which(hit.object) : null;
+}
 canvas.addEventListener('pointerdown', (e) => {
-  if (!started || finished && !held) return;
+  if (!started) return;
   setNdc(e);
+  if (!held) {                      // the desk toys work any time, even after the finale
+    const prop = (finished || !pickBrick()) && pickProp();
+    if (prop) {
+      prop.press(audio(), time);
+      controls.enabled = false; setTimeout(() => controls.enabled = true, 0);
+      return;
+    }
+    if (finished) return;
+  }
   if (held && !dragging) {          // click-to-place mode: second tap places
     candidate = findCandidate(held);
     release();
@@ -1016,9 +1032,12 @@ canvas.addEventListener('pointermove', (e) => {
   if (held) { follow(e); return; }
   if (!started || e.pointerType !== 'mouse') return;
   setNdc(e);
-  const b = pickBrick();
-  canvas.style.cursor = b && b.step === step ? 'grab' : '';
+  const b = finished ? null : pickBrick();
+  canvas.style.cursor = b && b.step === step ? 'grab' : !b && pickProp() ? 'pointer' : '';
 });
+const keyUp = () => props.keycap.release(audio());
+addEventListener('pointerup', keyUp);
+addEventListener('pointercancel', keyUp);
 canvas.addEventListener('pointerup', (e) => {
   if (!held || !dragging) return;
   const moved = Math.hypot(e.clientX - downXY[0], e.clientY - downXY[1]);
@@ -1200,7 +1219,7 @@ if (params.has('step')) {
   }
 }
 if (params.has('go')) { for (const b of BRICKS) b.mesh.visible = true; $('intro').classList.remove('open'); started = true; boxView.active = false; refreshStep(); }
-if (params.has('debug')) window.__dbg = { BRICKS, SLOTS, camera, canvas, get step() { return step; } };
+if (params.has('debug')) window.__dbg = { BRICKS, SLOTS, camera, canvas, props, controls, get step() { return step; } };
 
 // ---------------------------------------------------------------- finale
 let tile = null;
@@ -1342,6 +1361,7 @@ function loop() {
     camera.position.copy(controls.target).add(p);
   }
 
+  props.update(dt, time);
   controls.update();
   renderer.render(scene, camera);
   if (boxView.active) boxView.render(dt);
