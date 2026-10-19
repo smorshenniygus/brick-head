@@ -63,6 +63,8 @@ body {
   -webkit-font-smoothing: antialiased;
   user-select: none;
   -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 #scene { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; outline: none; }
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
@@ -98,7 +100,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* ---------- top bar */
 .top {
-  position: fixed; top: 12px; left: 16px; right: 16px;
+  position: fixed; top: calc(12px + env(safe-area-inset-top)); left: 16px; right: 16px;
   display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
   pointer-events: none; z-index: 5;
 }
@@ -124,7 +126,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* ---------- instruction page */
 .manual {
-  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
+  position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translateX(-50%);
   width: min(600px, calc(100% - 24px));
   padding: 14px 16px 16px; z-index: 5;
   background: var(--paper); border-radius: 10px;
@@ -183,7 +185,8 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 /* ---------- the set box */
 .overlay {
   position: fixed; inset: 0; z-index: 10;
-  display: none; align-items: center; justify-content: center; padding: 16px;
+  display: none; align-items: safe center; justify-content: center; padding: 16px;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
   background: color-mix(in srgb, var(--scene) 45%, transparent);
   backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
 }
@@ -208,7 +211,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 .box-fact b { font-family: 'Unbounded', sans-serif; font-size: 17px; letter-spacing: 0; color: #1f1b18; line-height: 1.1; }
 .box-art {
-  position: relative; height: min(40vh, 320px); margin: 12px 14px 0; border-radius: 8px; overflow: hidden;
+  position: relative; height: min(36vh, 320px); min-height: 170px; margin: 12px 14px 0; border-radius: 8px; overflow: hidden;
   background: radial-gradient(120% 90% at 50% 35%, #ff6b4f 0%, #e23a25 45%, #b81e14 100%);
 }
 .box-art canvas { width: 100%; height: 100%; display: block; }
@@ -234,7 +237,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 
 /* ---------- finale */
 .finale {
-  position: fixed; left: 50%; bottom: 14px; transform: translate(-50%, 20px) scale(.96);
+  position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px) scale(.96);
   z-index: 8; text-align: center; padding: 20px 22px 22px; opacity: 0; pointer-events: none;
   width: min(470px, calc(100% - 24px));
   background: var(--paper); border-radius: 10px;
@@ -258,6 +261,26 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 }
 #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 7; }
 
+/* phones held sideways: keep the table visible between the bars */
+@media (max-height: 500px) {
+  .set-badge { display: none; }
+  .top { justify-content: flex-end; }
+  .manual { width: min(520px, calc(100% - 24px)); padding: 10px 12px 10px; }
+  .step-no b { font-size: 34px; }
+  .part svg { height: 26px; }
+  .manual-foot { display: none; }
+  .callout { padding: 4px 8px; }
+}
+/* the set box side by side when the phone is sideways */
+@media (max-height: 500px) and (min-width: 600px) {
+  .box { width: min(760px, 100%); display: grid; grid-template-columns: 1.1fr 1fr; }
+  .box-top { grid-column: 1 / -1; }
+  .box-art { height: auto; min-height: 200px; margin: 12px 0 16px 14px; }
+  .box-body { align-self: center; padding: 10px 18px 16px; }
+  .box h1 { font-size: 24px; }
+  .box p { margin: 8px 0 14px; font-size: 15px; }
+  .box .meta { display: none; }
+}
 @media (max-width: 560px) {
   .set-badge { display: none; }
   .top { justify-content: flex-end; }
@@ -406,7 +429,8 @@ function addLights(sc, shadows) {
   key.position.set(18, 40, 26);
   if (shadows) {
     key.castShadow = true;
-    key.shadow.mapSize.set(2048, 2048);
+    const s = matchMedia('(pointer: coarse)').matches ? 1024 : 2048;
+    key.shadow.mapSize.set(s, s);
     const c = key.shadow.camera;
     c.left = -40; c.right = 40; c.top = 40; c.bottom = -40; c.near = 1; c.far = 120;
     key.shadow.bias = -0.0004;
@@ -894,15 +918,36 @@ let dragging = false;
 let downXY = null;
 let candidate = null;      // slot the held brick would snap into
 
-function setNdc(e) {
+const pointerXY = [0, 0];
+let pointerTouch = false;
+function setNdc(e, dy = 0) {
   const r = canvas.getBoundingClientRect();
-  ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  pointerXY[0] = e.clientX - r.left; pointerXY[1] = e.clientY - r.top + dy;
+  pointerTouch = e.pointerType !== 'mouse';
+  ndc.set((pointerXY[0] / r.width) * 2 - 1, -(pointerXY[1] / r.height) * 2 + 1);
   raycaster.setFromCamera(ndc, camera);
 }
+const toScreen = (v) => {
+  const p = v.clone().project(camera), r = canvas.getBoundingClientRect();
+  return [(p.x + 1) / 2 * r.width, (1 - p.y) / 2 * r.height, p.z];
+};
+const brickTop = (b) => b.mesh.position.clone().add(new THREE.Vector3(0, LAYER_H * 0.6, 0));
 function pickBrick() {
   const meshes = BRICKS.filter(b => !b.slot && !b.busy).map(b => b.mesh);
   const hit = raycaster.intersectObjects(meshes, false)[0];
-  return hit ? hit.object.userData.brick : null;
+  const exact = hit ? hit.object.userData.brick : null;
+  if (exact && exact.step === step) return exact;
+  // a near miss on a brick that is needed right now beats an exact hit on one that isn't
+  const reach = pointerTouch ? 34 : 10;
+  let best = null, bd = reach;
+  for (const b of BRICKS) {
+    if (b.slot || b.busy || b.step !== step) continue;
+    const [x, y, z] = toScreen(brickTop(b));
+    if (z > 1) continue;
+    const d = Math.hypot(x - pointerXY[0], y - pointerXY[1]);
+    if (d < bd) { bd = d; best = b; }
+  }
+  return best || exact;
 }
 function freeMatching(b) {
   return slotsOfStep(step).filter(s => !s.filledBy && s.type === b.type);
@@ -915,7 +960,7 @@ function findCandidate(b) {
   const y = step * LAYER_H + LAYER_H * 0.5;
   dragPlane.constant = -y;
   if (!raycaster.ray.intersectPlane(dragPlane, hitPt)) return null;
-  let best = null, bd = 2.6;
+  let best = null, bd = pointerTouch ? 3.6 : 2.6;
   for (const s of list) {
     const d = Math.hypot(s.pos.x - hitPt.x, s.pos.z - hitPt.z);
     if (d < bd) { bd = d; best = s; }
@@ -923,7 +968,7 @@ function findCandidate(b) {
   return best;
 }
 function follow(e) {
-  setNdc(e);
+  setNdc(e, dragging && e.pointerType === 'touch' ? -56 : 0);
   candidate = findCandidate(held);
   for (const s of slotsOfStep(step)) if (!s.filledBy) s.ghost.material.opacity = (s === candidate ? 0.6 : (s.type === held.type ? 0.42 : 0.12));
   if (candidate) {
@@ -983,6 +1028,7 @@ function afterPlace() {
   refreshStep();
   if (step >= STEPS && !finished) celebrate();
   else if (step !== before) {
+    zoomForStep();
     tick(1180, 0.07);
     setTimeout(() => tick(1560, 0.07), 90);
     toast(`Шаг ${before + 1} готов — дальше шаг ${step + 1}`);
@@ -1066,10 +1112,26 @@ controls.maxPolarAngle = Math.PI * 0.47;
 controls.target.set(0, 4, 0);
 const targetY = { v: 4 };
 
+let baseDist = 66;
+// back the camera off as the head grows, so the pile stays in view
+function zoomForStep() {
+  const want = baseDist * (1 + 0.5 * Math.min(step, STEPS) / STEPS);
+  const off = camera.position.clone().sub(controls.target), from = off.length();
+  if (Math.abs(want - from) < 0.5) return;
+  tweens.push({ t: 0, dur: 1.2, step(t) {
+    const o = camera.position.clone().sub(controls.target);
+    o.setLength(from + (want - from) * easeInOut(t));
+    camera.position.copy(controls.target).add(o);
+  } });
+}
 function frame() {
   const aspect = innerWidth / innerHeight;
-  const dist = aspect < 0.8 ? 92 : 66;
-  camera.position.set(0, dist * 0.44, dist * 0.9);
+  if (aspect < 0.8) {        // tall phone screen: look down more steeply so the pile fills it
+    camera.position.set(0, 64, 50);
+  } else {
+    camera.position.set(0, 66 * 0.44, 66 * 0.9);
+  }
+  baseDist = camera.position.distanceTo(controls.target);
   controls.target.set(0, 4, 0);
 }
 
@@ -1080,10 +1142,32 @@ $('hintBtn').onclick = () => {
   const s = free[Math.floor(rnd() * free.length)];
   const b = BRICKS.find(x => !x.slot && !x.busy && x.type === s.type);
   if (!b) return;
-  wiggle(b);
+  if (!onScreen(b)) bringToTray(b); else wiggle(b);
   hintPulse = { b, s, t: 0 };
   toast('Вот эта деталь — и её место');
 };
+
+// is the brick visible between the top buttons and the instruction panel?
+function onScreen(b) {
+  const [x, y, z] = toScreen(brickTop(b));
+  const bottom = $('stepPanel').getBoundingClientRect().top - 8;
+  return z < 1 && x > 12 && x < innerWidth - 12 && y > 80 && y < bottom;
+}
+// the free strip of baseplate in front of the stand works as a little tray
+const TRAY_Z = 9;
+function bringToTray(b) {
+  const len = Math.max(b.w, b.d), half = len / 2;
+  const used = BRICKS.filter(x => x !== b && !x.slot && x.pilePos.y === 0).map(x => [x.pilePos.x - Math.max(x.w, x.d) / 2 - 0.4, x.pilePos.x + Math.max(x.w, x.d) / 2 + 0.4]);
+  let spot = null;
+  for (const cx of [0, -5, 5, -8, 8, -2.5, 2.5]) {
+    if (cx - half < -10.6 || cx + half > 10.6) continue;
+    if (used.every(([a, c]) => cx + half <= a || cx - half >= c)) { spot = cx; break; }
+  }
+  if (spot === null) { wiggle(b); return; }
+  b.pilePos.set(spot, 0, TRAY_Z);
+  b.pileRot = b.w >= b.d ? 0 : Math.PI / 2;
+  fly(b, b.pilePos, b.pileRot, 0.8, 7, null);
+}
 let hintPulse = null;
 let hintType = null;
 $('parts').addEventListener('click', (e) => {
@@ -1091,6 +1175,8 @@ $('parts').addEventListener('click', (e) => {
   if (!el || el.classList.contains('done')) return;
   hintType = { type: el.dataset.type, t: 0 };
   tick(820, 0.05);
+  const mine = BRICKS.filter(b => !b.slot && !b.busy && b.type === el.dataset.type);
+  if (mine.length && !mine.some(onScreen)) bringToTray(mine[0]);
 });
 
 $('menuBtn').onclick = (e) => { e.stopPropagation(); $('menu').classList.toggle('open'); };
@@ -1206,6 +1292,7 @@ function begin() {
   audio();
   if (!saved) BRICKS.forEach((b, i) => drop(b, 0.15 + i * 0.007));
   refreshStep();
+  zoomForStep();
   if (currentStep() >= STEPS) celebrate(true);
 }
 $('startBtn').onclick = begin;
@@ -1218,7 +1305,7 @@ if (params.has('step')) {
     s.filledBy = b; b.slot = s; putInSlot(b, s);
   }
 }
-if (params.has('go')) { for (const b of BRICKS) b.mesh.visible = true; $('intro').classList.remove('open'); started = true; boxView.active = false; refreshStep(); }
+if (params.has('go')) { for (const b of BRICKS) b.mesh.visible = true; $('intro').classList.remove('open'); started = true; boxView.active = false; refreshStep(); setTimeout(zoomForStep, 0); }
 if (params.has('debug')) window.__dbg = { BRICKS, SLOTS, camera, canvas, props, controls, get step() { return step; } };
 
 // ---------------------------------------------------------------- finale
@@ -1363,6 +1450,9 @@ function loop() {
 
   props.update(dt, time);
   controls.update();
+  // haze starts behind whatever the camera is looking at, however far it has zoomed out
+  const camDist = camera.position.distanceTo(controls.target);
+  scene.fog.near = camDist + 8; scene.fog.far = camDist + 100;
   renderer.render(scene, camera);
   if (boxView.active) boxView.render(dt);
   if (bits.length) drawConfetti(dt); else if (cc.width) { cx.clearRect(0, 0, cc.width, cc.height); }

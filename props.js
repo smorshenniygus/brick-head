@@ -4,9 +4,14 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 
-export const PROP_SPOTS = [
-  { x: -21, z: -27, r: 11 },   // cushion (with its nozzle)
-  { x: 21, z: -26, r: 5.5 },   // keycap
+// on a tall phone screen the table is seen through a narrow window, so the toys move in
+const NARROW = innerWidth / innerHeight < 0.8;
+export const PROP_SPOTS = NARROW ? [
+  { x: -15, z: -30, r: 10 },   // cushion (with its nozzle), a bit smaller on phones
+  { x: 15, z: -29, r: 5 },     // keycap
+] : [
+  { x: -21, z: -27, r: 11 },
+  { x: 21, z: -26, r: 5.5 },
 ];
 
 // planar top-down UVs, so a flat print lands on the top surface
@@ -278,6 +283,7 @@ export function switchSound(a, isDown) {
 
 export function makeProps(scene, matTop) {
   const cushion = makeCushion(matTop), keycap = makeKeycap(matTop);
+  if (NARROW) { cushion.group.scale.multiplyScalar(0.85); keycap.group.scale.multiplyScalar(0.85); }
   scene.add(cushion.group, keycap.group);
   const hitList = [...cushion.hit.map(m => [m, cushion]), ...keycap.hit.map(m => [m, keycap])];
   return {
