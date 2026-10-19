@@ -9,8 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Unbounded:wght@700;900&display=swap" rel="stylesheet">
 <style>
 :root {
-  --scene: #efe8dc;
-  --ground: #8f6a4a;
+  --scene: #e6d3bd;
   --paper: #fffdf7;
   --paper-edge: #e3dccf;
   --ink: #1f1b18;
@@ -26,11 +25,11 @@
   --blue-dk: #12498a;
   --green: #2e9446;
   --drop: 0 8px 18px rgba(40, 20, 5, 0.28);
+  --room: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --scene: #1d2129;
-    --ground: #5b4636;
+    --scene: #2b2222;
     --paper: #262a32;
     --paper-edge: #171a1f;
     --ink: #f4eee6;
@@ -39,11 +38,11 @@
     --callout-edge: #1d2a39;
     --stud-off: #3c414b;
     --drop: 0 8px 18px rgba(0, 0, 0, 0.5);
+    --room: dark;
   }
 }
 :root[data-theme="dark"] {
-  --scene: #1d2129;
-  --ground: #5b4636;
+  --scene: #2b2222;
   --paper: #262a32;
   --paper-edge: #171a1f;
   --ink: #f4eee6;
@@ -52,6 +51,7 @@
   --callout-edge: #1d2a39;
   --stud-off: #3c414b;
   --drop: 0 8px 18px rgba(0, 0, 0, 0.5);
+  --room: dark;
 }
 
 * { box-sizing: border-box; }
@@ -248,6 +248,14 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 .finale p { margin: 0 0 12px; font-weight: 800; color: var(--ink-soft); }
 .finale .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
+/* soft vignette + film grain over the 3D scene, under the UI */
+#atmo {
+  position: fixed; inset: 0; pointer-events: none; z-index: 1;
+  background:
+    radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(30, 15, 5, 0.32) 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay; opacity: .5;
+}
 #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 7; }
 
 @media (max-width: 560px) {
@@ -270,6 +278,7 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 </head>
 <body>
 <canvas id="scene"></canvas>
+<div id="atmo"></div>
 <canvas id="confetti"></canvas>
 
 <div class="top">
@@ -409,51 +418,179 @@ function addLights(sc, shadows) {
 }
 addLights(scene, true);
 
-const ground = new THREE.Mesh(new THREE.CircleGeometry(300, 64), new THREE.MeshStandardMaterial({ roughness: 0.8, envMapIntensity: 0.25 }));
+// ---------------------------------------------------------------- surroundings
+// everything is painted procedurally into canvases: a wooden table, a felt play mat
+// under the pile, and a warm room with out-of-focus party lights behind it
+const MAT_TOP = GROUND + 0.14;
 
-// a wooden table: planks + grain painted into a canvas
-function woodTexture(base) {
-  const cv = document.createElement('canvas'); cv.width = cv.height = 1024;
-  const c = cv.getContext('2d');
-  const col = new THREE.Color(base);
-  const css = (k, a = 1) => `rgba(${Math.round(Math.min(1, col.r * k) * 255)},${Math.round(Math.min(1, col.g * k) * 255)},${Math.round(Math.min(1, col.b * k) * 255)},${a})`;
-  const plank = 128;
-  for (let p = 0; p < 1024 / plank; p++) {
-    const y0 = p * plank;
-    c.fillStyle = css(0.9 + ((p * 37) % 7) / 30);
-    c.fillRect(0, y0, 1024, plank);
-    for (let l = 0; l < 26; l++) {
-      const yy = y0 + 6 + Math.random() * (plank - 12), amp = 1 + Math.random() * 3, ph = Math.random() * 6;
-      c.strokeStyle = Math.random() < 0.5 ? css(0.78, 0.35) : css(1.08, 0.3);
-      c.lineWidth = 0.6 + Math.random() * 1.6;
-      c.beginPath();
-      for (let x = 0; x <= 1024; x += 16) c.lineTo(x, yy + Math.sin(x / 140 + ph) * amp);
-      c.stroke();
-    }
-    c.fillStyle = css(0.6, 0.55);
-    c.fillRect(0, y0, 1024, 2);
-  }
-  const tex = new THREE.CanvasTexture(cv);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(9, 9);
-  tex.anisotropy = 8;
-  return tex;
+const hash2 = (x, y, s) => { const h = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453; return h - Math.floor(h); };
+function vnoise(x, y, s) {
+  const xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf);
+  const a = hash2(xi, yi, s), b = hash2(xi + 1, yi, s), c = hash2(xi, yi + 1, s), d = hash2(xi + 1, yi + 1, s);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
 }
-ground.rotation.x = -Math.PI / 2;
-ground.position.y = GROUND;
-ground.receiveShadow = true;
-scene.add(ground);
+const fbm = (x, y, s, o = 3) => { let t = 0, amp = 0.5, f = 1; for (let i = 0; i < o; i++) { t += vnoise(x * f, y * f, s + i) * amp; f *= 2; amp *= 0.5; } return t / (1 - Math.pow(0.5, o)); };
+const canvasTex = (cv, srgb, rep) => {
+  const t = new THREE.CanvasTexture(cv);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  if (rep) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(rep, rep); }
+  t.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  return t;
+};
 
+// oak planks with real grain: colour map + bump map from the same rings
+function woodMaps(base) {
+  const N = 1024, PL = 128;
+  const col = document.createElement('canvas'), bmp = document.createElement('canvas');
+  col.width = col.height = bmp.width = bmp.height = N;
+  const ci = col.getContext('2d').createImageData(N, N), bi = bmp.getContext('2d').createImageData(N, N);
+  const c0 = new THREE.Color(base);
+  for (let y = 0; y < N; y++) {
+    const p = Math.floor(y / PL), v = (y % PL) / PL;
+    const joint = (hash2(p, 3, 9) * N) | 0;             // where this plank's end joint sits
+    const tone = 0.86 + hash2(p, 1, 2) * 0.24;
+    for (let x = 0; x < N; x++) {
+      const seg = x < joint ? 0 : 1, sid = p * 2 + seg;
+      const w = fbm(x / 260, y / 26, sid * 3.1, 3);
+      const ring = (v * 5 + w * 3.2 + hash2(sid, 0, 1) * 9) % 1;
+      const grain = Math.pow(Math.abs(ring - 0.5) * 2, 3);            // thin dark late-wood lines
+      const fine = vnoise(x / 1.6, y / 14, sid) * 0.5 + vnoise(x / 0.8, y / 30, sid + 7) * 0.5;
+      let k = tone * (1.04 - grain * 0.26 - fine * 0.07) * (0.94 + w * 0.12);
+      const edgeY = Math.min(y % PL, PL - 1 - (y % PL)), edgeX = Math.abs(x - joint);
+      const seam = edgeY < 1.5 || edgeX < 1.5 ? 0.45 : edgeY < 3 ? 0.85 : 1;
+      k *= seam;
+      const i = (y * N + x) * 4;
+      ci.data[i] = Math.min(255, c0.r * k * 255 * 1.02);
+      ci.data[i + 1] = Math.min(255, c0.g * k * 255);
+      ci.data[i + 2] = Math.min(255, c0.b * k * 255 * 0.96);
+      ci.data[i + 3] = 255;
+      const h = (1 - grain * 0.5 - fine * 0.25) * seam * 255;
+      bi.data[i] = bi.data[i + 1] = bi.data[i + 2] = h; bi.data[i + 3] = 255;
+    }
+  }
+  col.getContext('2d').putImageData(ci, 0, 0);
+  bmp.getContext('2d').putImageData(bi, 0, 0);
+  return { map: canvasTex(col, true, 7), bump: canvasTex(bmp, false, 7) };
+}
+
+// felt: soft mottled colour, a stitched border, and a tiled fibre bump
+function feltMaps(base) {
+  const N = 1024;
+  const cv = document.createElement('canvas'); cv.width = cv.height = N;
+  const c = cv.getContext('2d'), img = c.createImageData(N, N), c0 = new THREE.Color(base);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const m = fbm(x / 120, y / 120, 4, 3) * 0.12 + hash2(x, y, 5) * 0.06;
+    const k = 0.94 + m, i = (y * N + x) * 4;
+    img.data[i] = c0.r * k * 255; img.data[i + 1] = c0.g * k * 255; img.data[i + 2] = c0.b * k * 255; img.data[i + 3] = 255;
+  }
+  c.putImageData(img, 0, 0);
+  // stitching along the rim
+  c.save(); c.translate(N / 2, N / 2);
+  c.strokeStyle = 'rgba(255, 244, 225, 0.75)'; c.lineWidth = 4; c.lineCap = 'round';
+  c.setLineDash([14, 12]);
+  c.beginPath(); c.arc(0, 0, N / 2 - 22, 0, Math.PI * 2); c.stroke();
+  c.strokeStyle = 'rgba(0, 0, 0, 0.18)'; c.setLineDash([]); c.lineWidth = 10;
+  c.beginPath(); c.arc(0, 0, N / 2 - 6, 0, Math.PI * 2); c.stroke();
+  c.restore();
+  const F = 256, fb = document.createElement('canvas'); fb.width = fb.height = F;
+  const fc = fb.getContext('2d'), fi = fc.createImageData(F, F);
+  for (let i = 0; i < F * F; i++) { const h = 150 + hash2(i % F, (i / F) | 0, 11) * 105; fi.data[i * 4] = fi.data[i * 4 + 1] = fi.data[i * 4 + 2] = h; fi.data[i * 4 + 3] = 255; }
+  fc.putImageData(fi, 0, 0);
+  // short fibres
+  for (let i = 0; i < 2600; i++) {
+    const x = hash2(i, 1, 12) * F, y = hash2(i, 2, 12) * F, a = hash2(i, 3, 12) * Math.PI, l = 2 + hash2(i, 4, 12) * 5;
+    fc.strokeStyle = `rgba(${hash2(i, 5, 12) < 0.5 ? '255,255,255' : '0,0,0'},0.25)`; fc.lineWidth = 0.7;
+    fc.beginPath(); fc.moveTo(x, y); fc.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); fc.stroke();
+  }
+  return { map: canvasTex(cv, true), bump: canvasTex(fb, false, 14) };
+}
+
+// the room behind the table: a plaster wall with garlands of out-of-focus party lights
+function wallTexture(top, foot, lights) {
+  const W = 2048, H = 768, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  const g = c.createLinearGradient(0, 0, 0, H);
+  g.addColorStop(0, top); g.addColorStop(0.5, top); g.addColorStop(0.92, foot); g.addColorStop(1, foot);
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  // skirting board where the wall meets the table
+  const sk = new THREE.Color(foot).multiplyScalar(0.78);
+  c.fillStyle = `#${sk.getHexString()}`; c.fillRect(0, H * 0.955, W, H * 0.045);
+  c.fillStyle = 'rgba(255,255,255,0.35)'; c.fillRect(0, H * 0.955, W, 2);
+  c.globalCompositeOperation = 'lighter';
+  const blob = (x, y, r, col, a) => {
+    const rg = c.createRadialGradient(x, y, 0, x, y, r);
+    rg.addColorStop(0, `rgba(${col},${a})`); rg.addColorStop(0.7, `rgba(${col},${a * 0.85})`); rg.addColorStop(1, `rgba(${col},0)`);
+    c.fillStyle = rg; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+  };
+  // sagging garlands, each span hung between two nails
+  let n = 0;
+  for (let row = 0; row < 2; row++) {
+    const spans = 4, y0 = H * (0.42 + row * 0.2);
+    for (let sp = 0; sp < spans; sp++) {
+      const x0 = (sp + row * 0.5) * W / spans, sag = H * (0.09 + hash2(sp, row, 8) * 0.05);
+      for (let k = 0; k < 9; k++, n++) {
+        const t = (k + 0.5) / 9, x = (x0 + t * W / spans) % W, y = y0 + Math.sin(t * Math.PI) * sag;
+        const r = 16 + hash2(n, 1, 22) * 22, col = lights[n % lights.length], a = 0.35 + hash2(n, 2, 22) * 0.3;
+        blob(x, y, r, col, a);
+        if (x < r) blob(x + W, y, r, col, a);            // wrap around the seam
+      }
+    }
+  }
+  for (let i = 0; i < 26; i++) blob(hash2(i, 1, 23) * W, H * (0.35 + hash2(i, 2, 23) * 0.5), 40 + hash2(i, 3, 23) * 70, lights[i % lights.length], 0.06);
+  c.globalCompositeOperation = 'source-over';
+  const img = c.getImageData(0, 0, W, H);       // plaster grain
+  for (let i = 0; i < img.data.length; i += 4) {
+    const v = (i / 4 / W) | 0, u = (i / 4) % W;
+    const nz = (hash2(u, v, 3) - 0.5) * 9 + (vnoise(u / 40, v / 40, 2) - 0.5) * 10;
+    img.data[i] += nz; img.data[i + 1] += nz; img.data[i + 2] += nz;
+  }
+  c.putImageData(img, 0, 0);
+  const t = canvasTex(cv, true);
+  t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1);
+  return t;
+}
+
+const ROOM_R = 100;
+const wall = new THREE.Mesh(new THREE.CylinderGeometry(ROOM_R, ROOM_R, 90, 96, 1, true),
+  new THREE.MeshBasicMaterial({ side: THREE.BackSide, fog: false }));
+wall.position.y = GROUND + 45;
+scene.add(wall);
+const table = new THREE.Mesh(new THREE.CircleGeometry(ROOM_R + 1, 96),
+  new THREE.MeshStandardMaterial({ roughness: 0.62, bumpScale: 1.2, envMapIntensity: 0.3 }));
+table.rotation.x = -Math.PI / 2;
+table.position.y = GROUND;
+table.receiveShadow = true;
+scene.add(table);
+
+const mat = new THREE.Mesh(new THREE.CylinderGeometry(41, 41, MAT_TOP - GROUND, 128),
+  [new THREE.MeshStandardMaterial({ roughness: 1 }), new THREE.MeshStandardMaterial({ roughness: 1, bumpScale: 2.5 }), new THREE.MeshStandardMaterial()]);
+mat.position.set(0, (GROUND + MAT_TOP) / 2, 3);
+mat.receiveShadow = true;
+scene.add(mat);
+
+const ROOM = {
+  light: { top: '#c9a99a', horizon: '#e9d4bd', wood: '#9a7150', felt: '#5b8a8f', lights: ['255,205,140', '255,170,150', '255,230,180', '200,220,255'] },
+  dark:  { top: '#1c1820', horizon: '#3a2c2a', wood: '#6a4c36', felt: '#3f6b70', lights: ['255,190,110', '255,140,130', '255,220,160', '160,190,255'] },
+};
+let themeKey = null;
 function applyTheme() {
   const cs = getComputedStyle(document.documentElement);
-  const bg = new THREE.Color(cs.getPropertyValue('--scene').trim());
-  const gr = new THREE.Color(cs.getPropertyValue('--ground').trim());
-  scene.background = bg;
-  scene.fog = new THREE.Fog(bg, 90, 220);
-  if (ground.material.map) ground.material.map.dispose();
-  ground.material.map = woodTexture(gr);
-  ground.material.needsUpdate = true;
+  const key = cs.getPropertyValue('--room').trim() === 'dark' ? 'dark' : 'light';
+  if (key === themeKey) return;
+  themeKey = key;
+  const R = ROOM[key];
+  scene.background = new THREE.Color(R.horizon);
+  if (wall.material.map) wall.material.map.dispose();
+  wall.material.map = wallTexture(R.top, R.horizon, R.lights);
+  wall.material.needsUpdate = true;
+  scene.fog = new THREE.Fog(R.horizon, 70, 165);
+  const wood = woodMaps(R.wood), felt = feltMaps(R.felt);
+  for (const t of [table.material.map, table.material.bumpMap, mat.material[1].map, mat.material[1].bumpMap]) t && t.dispose();
+  Object.assign(table.material, { map: wood.map, bumpMap: wood.bump });
+  Object.assign(mat.material[1], { map: felt.map, bumpMap: felt.bump });
+  mat.material[0].color.set(R.felt).multiplyScalar(0.7);
+  for (const m of [table.material, ...mat.material]) m.needsUpdate = true;
 }
 applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
@@ -539,7 +676,7 @@ const BRICKS = SLOTS.map((s) => {
       }
     }
     placed.push({ x: o.x, z: o.z, r, o });
-    b.pilePos.set(o.x, GROUND, o.z);
+    b.pilePos.set(o.x, MAT_TOP, o.z);
     b.pileRot = a;
   }
 }
@@ -912,8 +1049,8 @@ const targetY = { v: 4 };
 
 function frame() {
   const aspect = innerWidth / innerHeight;
-  const dist = aspect < 0.8 ? 92 : 64;
-  camera.position.set(0, dist * 0.62, dist * 0.82);
+  const dist = aspect < 0.8 ? 92 : 66;
+  camera.position.set(0, dist * 0.44, dist * 0.9);
   controls.target.set(0, 4, 0);
 }
 
